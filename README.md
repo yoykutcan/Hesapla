@@ -13,3 +13,6 @@ Kodu değiştirip yükle, yeni APK'yı eskisinin üstüne kur. `signing/debug.ke
 
 ## Play Store
 Yayın için ayrı bir yükleme (upload) anahtarı ve imzalı AAB üretimi eklenecek. Bu test anahtarı Play Store için kullanılmamalı.
+
+## Yasal parametreler
+Brüt-net maaş ve kıdem tazminatı hesapları `lib/params.dart` dosyasındaki 2026 değerlerini kullanır (asgari ücret, SGK tavanı, vergi dilimleri, kıdem tavanı). Yıl veya dönem değişince sadece bu dosyayı güncelle.

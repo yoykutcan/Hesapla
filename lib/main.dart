@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'store.dart';
 import 'tools.dart';
 
@@ -29,6 +30,13 @@ class App extends StatelessWidget {
       builder: (_, __) => MaterialApp(
         title: 'Hesapla',
         debugShowCheckedModeBanner: false,
+        locale: const Locale('tr', 'TR'),
+        supportedLocales: const [Locale('tr', 'TR')],
+        localizationsDelegates: const [
+          GlobalMaterialLocalizations.delegate,
+          GlobalWidgetsLocalizations.delegate,
+          GlobalCupertinoLocalizations.delegate,
+        ],
         themeMode: store.themeMode,
         theme: _theme(Brightness.light),
         darkTheme: _theme(Brightness.dark),
@@ -140,7 +148,7 @@ class ToolCard extends StatelessWidget {
           child: InkWell(
             borderRadius: BorderRadius.circular(22),
             onTap: () => Navigator.push(
-                ctx, MaterialPageRoute(builder: (_) => t.page())),
+                ctx, MaterialPageRoute(builder: (_) => t.page(null))),
             child: Padding(
               padding: const EdgeInsets.all(14),
               child: Column(
@@ -329,7 +337,7 @@ class HistoryPage extends StatelessWidget {
                       child: Padding(
                         padding: EdgeInsets.all(32),
                         child: Text(
-                          'Yaptığın hesaplar burada görünür.',
+                          'Yaptığın hesaplar burada görünür. Birine dokununca aracı aynı değerlerle açar.',
                           textAlign: TextAlign.center,
                         ),
                       ),
@@ -337,15 +345,45 @@ class HistoryPage extends StatelessWidget {
                   : ListView.builder(
                       padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
                       itemCount: store.history.length,
-                      itemBuilder: (_, i) => Container(
-                        margin: const EdgeInsets.only(bottom: 8),
-                        padding: const EdgeInsets.all(14),
-                        decoration: BoxDecoration(
-                          color: cardColor(ctx),
-                          borderRadius: BorderRadius.circular(16),
-                        ),
-                        child: Text(store.history[i]),
-                      ),
+                      itemBuilder: (_, i) {
+                        final h = store.history[i];
+                        final known =
+                            tools.where((t) => t.id == h.tool).toList();
+                        final tool = known.isEmpty ? null : known.first;
+                        return Padding(
+                          padding: const EdgeInsets.only(bottom: 8),
+                          child: Material(
+                            color: cardColor(ctx),
+                            borderRadius: BorderRadius.circular(16),
+                            child: InkWell(
+                              borderRadius: BorderRadius.circular(16),
+                              onTap: tool == null
+                                  ? null
+                                  : () => Navigator.push(
+                                      ctx,
+                                      MaterialPageRoute(
+                                          builder: (_) => tool.page(h.inputs))),
+                              child: Padding(
+                                padding: const EdgeInsets.all(14),
+                                child: Row(
+                                  children: [
+                                    if (tool != null)
+                                      Padding(
+                                        padding:
+                                            const EdgeInsets.only(right: 12),
+                                        child: Icon(tool.icon,
+                                            color: tool.color, size: 22),
+                                      ),
+                                    Expanded(child: Text(h.text)),
+                                    if (tool != null)
+                                      const Icon(Icons.chevron_right_rounded),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ),
+                        );
+                      },
                     ),
             ),
           ],
@@ -389,7 +427,7 @@ class SettingsPage extends StatelessWidget {
               ),
               const ListTile(
                 title: Text('Sürüm'),
-                trailing: Text('1.0.0'),
+                trailing: Text('1.1.0'),
               ),
             ],
           ),

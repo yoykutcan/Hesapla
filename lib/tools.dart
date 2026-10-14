@@ -1,35 +1,47 @@
 import 'dart:math';
 import 'package:flutter/material.dart';
 import 'store.dart';
+import 'salary.dart';
+import 'dates.dart';
+
+typedef Init = Map<String, String>?;
 
 class Tool {
   final String id, title, subtitle, category;
   final IconData icon;
   final Color color;
-  final Widget Function() page;
+  final Widget Function(Init init) page;
   Tool(this.id, this.title, this.subtitle, this.category, this.icon, this.color,
       this.page);
 }
 
 final List<Tool> tools = [
   Tool('calc', 'Hesap makinesi', 'Dört işlem ve yüzde', 'Günlük',
-      Icons.calculate_rounded, const Color(0xFF5B6CFF), () => const CalcPage()),
+      Icons.calculate_rounded, const Color(0xFF5B6CFF), (i) => CalcPage(init: i)),
   Tool('percent', 'Yüzde', 'Yüzde bul, ekle, çıkar', 'Günlük',
-      Icons.percent_rounded, const Color(0xFF14B87A), () => const PercentPage()),
+      Icons.percent_rounded, const Color(0xFF14B87A), (i) => PercentPage(init: i)),
   Tool('interest', 'Faiz', 'Basit ve bileşik faiz', 'Finans',
-      Icons.savings_rounded, const Color(0xFFD97706), () => const InterestPage()),
-  Tool('loan', 'Kredi taksit', 'Aylık taksit ve toplam faiz', 'Finans',
+      Icons.savings_rounded, const Color(0xFFD97706), (i) => InterestPage(init: i)),
+  Tool('loan', 'Kredi taksit', 'Taksit, ödeme planı, erken kapama', 'Finans',
       Icons.account_balance_rounded, const Color(0xFF8B5CF6),
-      () => const LoanPage()),
+      (i) => LoanPage(init: i)),
+  Tool('salary', 'Brüt-net maaş', '2026 bordro hesabı', 'Finans',
+      Icons.payments_rounded, const Color(0xFFDC2626), (i) => SalaryPage(init: i)),
+  Tool('severance', 'Kıdem tazminatı', 'Brüt ve net tutar', 'Finans',
+      Icons.business_center_rounded, const Color(0xFFB45309),
+      (i) => SeverancePage(init: i)),
   Tool('vat', 'KDV', 'KDV dahil ve hariç', 'Finans',
-      Icons.receipt_long_rounded, const Color(0xFF0EA5E9), () => const VatPage()),
+      Icons.receipt_long_rounded, const Color(0xFF0EA5E9), (i) => VatPage(init: i)),
   Tool('fuel', 'Yakıt', 'Yol maliyeti ve tüketim', 'Günlük',
       Icons.local_gas_station_rounded, const Color(0xFFF97316),
-      () => const FuelPage()),
+      (i) => FuelPage(init: i)),
+  Tool('dates', 'Tarih araçları', 'Yaş, gün farkı, gün ekle', 'Günlük',
+      Icons.calendar_month_rounded, const Color(0xFFE11D48),
+      (i) => DatesPage(init: i)),
   Tool('bmi', 'Kilo / BMI', 'Vücut kitle indeksi', 'Sağlık',
-      Icons.monitor_weight_rounded, const Color(0xFFEC4899), () => const BmiPage()),
+      Icons.monitor_weight_rounded, const Color(0xFFEC4899), (i) => BmiPage(init: i)),
   Tool('units', 'Birim çevirici', 'Uzunluk, ağırlık, sıcaklık', 'Günlük',
-      Icons.swap_horiz_rounded, const Color(0xFF14B8A6), () => const UnitPage()),
+      Icons.swap_horiz_rounded, const Color(0xFF14B8A6), (i) => UnitPage(init: i)),
 ];
 
 Tool toolById(String id) => tools.firstWhere((t) => t.id == id);
@@ -81,7 +93,8 @@ Widget actionButton(Color color, VoidCallback onTap, [String text = 'Hesapla']) 
 // ---------------- Hesap makinesi ----------------
 
 class CalcPage extends StatefulWidget {
-  const CalcPage({super.key});
+  final Init init;
+  const CalcPage({super.key, this.init});
   @override
   State<CalcPage> createState() => _CalcState();
 }
@@ -151,7 +164,8 @@ class _CalcState extends State<CalcPage> {
     if (acc == null || op == null) return;
     final b = cur();
     final r = apply(acc!, op!, b);
-    store.addHistory('Hesap makinesi: ${show(acc!)} $op ${show(b)} = ${show(r)}');
+    store.addHistory('Hesap makinesi: ${show(acc!)} $op ${show(b)} = ${show(r)}',
+        tool: 'calc');
     setState(() {
       display = show(r);
       acc = null;
@@ -276,7 +290,8 @@ class _CalcState extends State<CalcPage> {
 // ---------------- Yüzde ----------------
 
 class PercentPage extends StatefulWidget {
-  const PercentPage({super.key});
+  final Init init;
+  const PercentPage({super.key, this.init});
   @override
   State<PercentPage> createState() => _PercentState();
 }
@@ -294,6 +309,13 @@ class _PercentState extends State<PercentPage> {
     'A sayısından %B çıkar',
   ];
 
+  @override
+  void initState() {
+    super.initState();
+    applyInit(widget.init, {'a': a, 'b': b});
+    mode = int.tryParse(widget.init?['mode'] ?? '') ?? 0;
+  }
+
   void calc() {
     final x = numOf(a), y = numOf(b);
     if (x == null || y == null) {
@@ -308,7 +330,7 @@ class _PercentState extends State<PercentPage> {
       hist = "${fmtFlex(x)} sayısının %${fmtFlex(y)}'si = ${fmt(v)}";
     } else if (mode == 1) {
       if (y == 0) {
-        warn(context, "B değeri 0 olamaz");
+        warn(context, 'B değeri 0 olamaz');
         return;
       }
       final v = x / y * 100;
@@ -323,16 +345,16 @@ class _PercentState extends State<PercentPage> {
       res = ResultData('Sonuç', fmt(x - d), ['Çıkarılan: ${fmt(d)}']);
       hist = '${fmtFlex(x)} - %${fmtFlex(y)} = ${fmt(x - d)}';
     }
-    store.addHistory('Yüzde: $hist');
+    store.addHistory('Yüzde: $hist',
+        tool: 'percent', inputs: snap({'a': a, 'b': b}, {'mode': '$mode'}));
     setState(() => r = res);
   }
 
   @override
   Widget build(BuildContext context) {
     final tool = toolById('percent');
-    final labels = mode == 1
-        ? ['Değer (A)', 'Toplam (B)']
-        : ['Sayı (A)', 'Yüzde (B)'];
+    final labels =
+        mode == 1 ? ['Değer (A)', 'Toplam (B)'] : ['Sayı (A)', 'Yüzde (B)'];
     return ToolPage(
       tool: tool,
       child: ListView(
@@ -360,7 +382,8 @@ class _PercentState extends State<PercentPage> {
 // ---------------- Faiz ----------------
 
 class InterestPage extends StatefulWidget {
-  const InterestPage({super.key});
+  final Init init;
+  const InterestPage({super.key, this.init});
   @override
   State<InterestPage> createState() => _InterestState();
 }
@@ -371,6 +394,13 @@ class _InterestState extends State<InterestPage> {
   final months = TextEditingController();
   int mode = 0;
   ResultData? r;
+
+  @override
+  void initState() {
+    super.initState();
+    applyInit(widget.init, {'p': p, 'rate': rate, 'months': months});
+    mode = int.tryParse(widget.init?['mode'] ?? '') ?? 0;
+  }
 
   void calc() {
     final P = numOf(p), y = numOf(rate), m = numOf(months);
@@ -386,7 +416,9 @@ class _InterestState extends State<InterestPage> {
     }
     final faiz = total - P;
     store.addHistory(
-        'Faiz (${mode == 0 ? 'basit' : 'bileşik'}): ${fmt(P)} ₺, %${fmtFlex(y)}, ${fmtFlex(m)} ay → ${fmt(total)} ₺');
+        'Faiz (${mode == 0 ? 'basit' : 'bileşik'}): ${fmt(P)} ₺, %${fmtFlex(y)}, ${fmtFlex(m)} ay → ${fmt(total)} ₺',
+        tool: 'interest',
+        inputs: snap({'p': p, 'rate': rate, 'months': months}, {'mode': '$mode'}));
     setState(() => r = ResultData('Vade sonu toplam', '${fmt(total)} ₺', [
           'Faiz tutarı: ${fmt(faiz)} ₺',
           'Anapara: ${fmt(P)} ₺',
@@ -424,7 +456,8 @@ class _InterestState extends State<InterestPage> {
 // ---------------- Kredi ----------------
 
 class LoanPage extends StatefulWidget {
-  const LoanPage({super.key});
+  final Init init;
+  const LoanPage({super.key, this.init});
   @override
   State<LoanPage> createState() => _LoanState();
 }
@@ -433,12 +466,21 @@ class _LoanState extends State<LoanPage> {
   final amount = TextEditingController();
   final rate = TextEditingController();
   final months = TextEditingController();
+  final early = TextEditingController();
   ResultData? r;
+  List<List<String>> plan = [];
+
+  @override
+  void initState() {
+    super.initState();
+    applyInit(widget.init,
+        {'amount': amount, 'rate': rate, 'months': months, 'early': early});
+  }
 
   void calc() {
     final P = numOf(amount), y = numOf(rate), m = numOf(months);
-    if (P == null || y == null || m == null || m < 1) {
-      warn(context, 'Tüm alanları doldur');
+    if (P == null || y == null || m == null || m < 1 || P <= 0) {
+      warn(context, 'Tutar, faiz ve vadeyi doldur');
       return;
     }
     final n = m.round();
@@ -451,13 +493,53 @@ class _LoanState extends State<LoanPage> {
       taksit = P * i * f / (f - 1);
     }
     final toplam = taksit * n;
+
+    final rows = <List<String>>[];
+    final balances = <double>[];
+    double bal = P;
+    for (int mo = 1; mo <= n; mo++) {
+      final faiz = bal * i;
+      final ana = taksit - faiz;
+      bal = max(0.0, bal - ana);
+      balances.add(bal);
+      rows.add([
+        '$mo',
+        fmt(taksit),
+        fmt(ana),
+        fmt(faiz),
+        fmt(mo == n ? 0 : bal),
+      ]);
+    }
+
+    final lines = <String>[
+      'Toplam geri ödeme: ${fmt(toplam)} ₺',
+      'Toplam faiz: ${fmt(toplam - P)} ₺',
+    ];
+    final k = numOf(early);
+    if (k != null && k >= 1 && k < n) {
+      final ki = k.round();
+      final kalan = balances[ki - 1];
+      final tasarruf = taksit * (n - ki) - kalan;
+      lines.add('$ki. taksitten sonra kapatırsan ödeyeceğin kalan borç: ${fmt(kalan)} ₺');
+      lines.add('Kalan faizden tasarruf: ${fmt(tasarruf)} ₺');
+    } else if (k != null && (k < 1 || k >= n)) {
+      lines.add('Erken kapama için 1 ile ${n - 1} arasında bir taksit sayısı gir.');
+    }
+    lines.add('KKDF, BSMV ve erken ödeme komisyonu dahil değildir.');
+
     store.addHistory(
-        'Kredi: ${fmt(P)} ₺, aylık %${fmtFlex(y)}, $n ay → taksit ${fmt(taksit)} ₺');
-    setState(() => r = ResultData('Aylık taksit', '${fmt(taksit)} ₺', [
-          'Toplam geri ödeme: ${fmt(toplam)} ₺',
-          'Toplam faiz: ${fmt(toplam - P)} ₺',
-          'KKDF ve BSMV dahil değildir.',
-        ]));
+        'Kredi: ${fmt(P)} ₺, aylık %${fmtFlex(y)}, $n ay → taksit ${fmt(taksit)} ₺',
+        tool: 'loan',
+        inputs: snap({
+          'amount': amount,
+          'rate': rate,
+          'months': months,
+          'early': early
+        }));
+    setState(() {
+      plan = rows;
+      r = ResultData('Aylık taksit', '${fmt(taksit)} ₺', lines);
+    });
   }
 
   @override
@@ -471,8 +553,15 @@ class _LoanState extends State<LoanPage> {
           NumField(label: 'Kredi tutarı', c: amount, suffix: '₺'),
           NumField(label: 'Aylık faiz oranı', c: rate, suffix: '%'),
           NumField(label: 'Vade', c: months, suffix: 'ay'),
+          NumField(label: 'Erken kapama: ödenen taksit sayısı (isteğe bağlı)', c: early),
           actionButton(tool.color, calc),
           if (r != null) ResultCard(data: r!, color: tool.color),
+          if (r != null)
+            MiniTable(
+              title: 'Ödeme planı',
+              headers: const ['Ay', 'Taksit', 'Anapara', 'Faiz', 'Kalan'],
+              rows: plan,
+            ),
         ],
       ),
     );
@@ -482,7 +571,8 @@ class _LoanState extends State<LoanPage> {
 // ---------------- KDV ----------------
 
 class VatPage extends StatefulWidget {
-  const VatPage({super.key});
+  final Init init;
+  const VatPage({super.key, this.init});
   @override
   State<VatPage> createState() => _VatState();
 }
@@ -493,20 +583,32 @@ class _VatState extends State<VatPage> {
   int mode = 0;
   ResultData? r;
 
+  @override
+  void initState() {
+    super.initState();
+    applyInit(widget.init, {'amount': amount, 'rate': rate});
+    mode = int.tryParse(widget.init?['mode'] ?? '') ?? 0;
+  }
+
   void calc() {
     final a = numOf(amount), y = numOf(rate);
     if (a == null || y == null) {
       warn(context, 'Tutar ve oranı gir');
       return;
     }
+    final inputs = snap({'amount': amount, 'rate': rate}, {'mode': '$mode'});
     if (mode == 0) {
       final kdv = a * y / 100;
-      store.addHistory('KDV: ${fmt(a)} ₺ + %${fmtFlex(y)} = ${fmt(a + kdv)} ₺');
+      store.addHistory('KDV: ${fmt(a)} ₺ + %${fmtFlex(y)} = ${fmt(a + kdv)} ₺',
+          tool: 'vat', inputs: inputs);
       setState(() => r = ResultData('KDV dahil tutar', '${fmt(a + kdv)} ₺',
           ['KDV tutarı: ${fmt(kdv)} ₺', 'KDV hariç: ${fmt(a)} ₺']));
     } else {
       final net = a / (1 + y / 100);
-      store.addHistory('KDV: ${fmt(a)} ₺ içinden %${fmtFlex(y)} = ${fmt(net)} ₺ hariç');
+      store.addHistory(
+          'KDV: ${fmt(a)} ₺ içinden %${fmtFlex(y)} = ${fmt(net)} ₺ hariç',
+          tool: 'vat',
+          inputs: inputs);
       setState(() => r = ResultData('KDV hariç tutar', '${fmt(net)} ₺',
           ['KDV tutarı: ${fmt(a - net)} ₺', 'KDV dahil: ${fmt(a)} ₺']));
     }
@@ -555,7 +657,8 @@ class _VatState extends State<VatPage> {
 // ---------------- Yakıt ----------------
 
 class FuelPage extends StatefulWidget {
-  const FuelPage({super.key});
+  final Init init;
+  const FuelPage({super.key, this.init});
   @override
   State<FuelPage> createState() => _FuelState();
 }
@@ -568,12 +671,23 @@ class _FuelState extends State<FuelPage> {
   int mode = 0;
   ResultData? r;
 
+  @override
+  void initState() {
+    super.initState();
+    applyInit(widget.init,
+        {'km': km, 'cons': cons, 'price': price, 'litres': litres});
+    mode = int.tryParse(widget.init?['mode'] ?? '') ?? 0;
+  }
+
   void calc() {
     final d = numOf(km);
     if (d == null || d <= 0) {
       warn(context, 'Mesafeyi gir');
       return;
     }
+    final inputs = snap(
+        {'km': km, 'cons': cons, 'price': price, 'litres': litres},
+        {'mode': '$mode'});
     if (mode == 0) {
       final c = numOf(cons), p = numOf(price);
       if (c == null || p == null) {
@@ -583,7 +697,9 @@ class _FuelState extends State<FuelPage> {
       final l = d * c / 100;
       final total = l * p;
       store.addHistory(
-          'Yakıt: ${fmtFlex(d)} km, $c L/100km → ${fmt(total)} ₺ (km başı ${fmt(total / d)} ₺)');
+          'Yakıt: ${fmtFlex(d)} km, ${fmtFlex(c)} L/100km → ${fmt(total)} ₺ (km başı ${fmt(total / d)} ₺)',
+          tool: 'fuel',
+          inputs: inputs);
       setState(() => r = ResultData('Toplam yakıt maliyeti', '${fmt(total)} ₺', [
             'Harcanan yakıt: ${fmt(l)} L',
             'Km başı maliyet: ${fmt(total / d)} ₺',
@@ -596,9 +712,11 @@ class _FuelState extends State<FuelPage> {
       }
       final per100 = l / d * 100;
       store.addHistory(
-          'Tüketim: ${fmtFlex(d)} km, ${fmtFlex(l)} L → ${fmt(per100)} L/100km');
+          'Tüketim: ${fmtFlex(d)} km, ${fmtFlex(l)} L → ${fmt(per100)} L/100km',
+          tool: 'fuel',
+          inputs: inputs);
       setState(() => r = ResultData(
-          'Ortalama tüketim', '${fmt(per100)} L / 100 km', [
+              'Ortalama tüketim', '${fmt(per100)} L / 100 km', [
             'Km başına: ${fmt(l / d, 3)} L',
           ]));
     }
@@ -638,7 +756,8 @@ class _FuelState extends State<FuelPage> {
 // ---------------- BMI ----------------
 
 class BmiPage extends StatefulWidget {
-  const BmiPage({super.key});
+  final Init init;
+  const BmiPage({super.key, this.init});
   @override
   State<BmiPage> createState() => _BmiState();
 }
@@ -647,6 +766,12 @@ class _BmiState extends State<BmiPage> {
   final kg = TextEditingController();
   final cm = TextEditingController();
   ResultData? r;
+
+  @override
+  void initState() {
+    super.initState();
+    applyInit(widget.init, {'kg': kg, 'cm': cm});
+  }
 
   void calc() {
     final w = numOf(kg), h = numOf(cm);
@@ -665,7 +790,10 @@ class _BmiState extends State<BmiPage> {
     } else {
       cat = 'Obez';
     }
-    store.addHistory('BMI: ${fmtFlex(w)} kg, ${fmtFlex(h)} cm → ${fmt(bmi, 1)} ($cat)');
+    store.addHistory(
+        'BMI: ${fmtFlex(w)} kg, ${fmtFlex(h)} cm → ${fmt(bmi, 1)} ($cat)',
+        tool: 'bmi',
+        inputs: snap({'kg': kg, 'cm': cm}));
     setState(() => r = ResultData('BMI', fmt(bmi, 1), [
           'Sınıf: $cat',
           'Genel bilgidir, tıbbi tavsiye yerine geçmez.',
@@ -732,7 +860,8 @@ const Map<String, Map<String, double>> unitCats = {
 };
 
 class UnitPage extends StatefulWidget {
-  const UnitPage({super.key});
+  final Init init;
+  const UnitPage({super.key, this.init});
   @override
   State<UnitPage> createState() => _UnitState();
 }
@@ -740,9 +869,25 @@ class UnitPage extends StatefulWidget {
 class _UnitState extends State<UnitPage> {
   final c = TextEditingController();
   String cat = 'Uzunluk';
-  late String from = unitCats[cat]!.keys.first;
-  late String to = unitCats[cat]!.keys.elementAt(1);
+  String from = 'Metre';
+  String to = 'Kilometre';
   ResultData? r;
+
+  @override
+  void initState() {
+    super.initState();
+    final init = widget.init;
+    if (init != null) {
+      c.text = init['v'] ?? '';
+      final k = init['cat'];
+      if (k != null && unitCats.containsKey(k)) {
+        cat = k;
+        final keys = unitCats[k]!.keys;
+        from = keys.contains(init['from']) ? init['from']! : keys.first;
+        to = keys.contains(init['to']) ? init['to']! : keys.elementAt(1);
+      }
+    }
+  }
 
   void setCat(String v) {
     final keys = unitCats[v]!.keys;
@@ -781,7 +926,9 @@ class _UnitState extends State<UnitPage> {
     } else {
       out = v * units[from]! / units[to]!;
     }
-    store.addHistory('Çevirici: ${fmtFlex(v)} $from = ${fmtFlex(out)} $to');
+    store.addHistory('Çevirici: ${fmtFlex(v)} $from = ${fmtFlex(out)} $to',
+        tool: 'units',
+        inputs: {'v': c.text, 'cat': cat, 'from': from, 'to': to});
     setState(() => r = ResultData('$from → $to', '${fmtFlex(out)} $to'));
   }
 
@@ -840,7 +987,7 @@ class _UnitState extends State<UnitPage> {
               ],
             ),
           ),
-          NumField(label: 'Değer', c: c),
+          NumField(label: 'Değer', c: c, allowNegative: cat == 'Sıcaklık'),
           dropdown('Kaynak', from, (v) => setState(() => from = v)),
           dropdown('Hedef', to, (v) => setState(() => to = v)),
           actionButton(tool.color, calc, 'Çevir'),
